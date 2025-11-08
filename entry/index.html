@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Product Entry</title>
+
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Cloudflare Turnstile -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+</head>
+<body>
+  <main class="container">
+
+    <h1>Enter for a Chance to Purchase</h1>
+    <p class="subtext">
+      Fill out your details below. You’ll receive a one-time passcode to confirm your entry.
+    </p>
+
+    <!-- Alerts -->
+    <div id="error" class="alert alert-error" hidden></div>
+    <div id="success" class="alert alert-success" hidden></div>
+
+    <!-- Entry Form -->
+    <form id="entry-form" novalidate>
+
+      <!-- Product context (customise these for each entry page) -->
+      <input type="hidden" id="product_id" name="product_id" value="prod_cowboyhat_2025" />
+      <input type="hidden" id="product_name" name="product_name" value="Cowboy Hat 2025 Edition" />
+
+      <label>
+        Full name
+        <input type="text" id="full_name" name="full_name" autocomplete="name" required>
+      </label>
+
+      <label>
+        Email
+        <input type="email" id="email" name="email" autocomplete="email" required>
+      </label>
+
+      <label>
+        Mobile number
+        <input type="tel" id="mobile" name="mobile" required placeholder="+44 7…">
+      </label>
+
+      <label>
+        Address line 1
+        <input type="text" id="address1" name="address1" autocomplete="address-line1" required>
+      </label>
+
+      <label>
+        Address line 2 (optional)
+        <input type="text" id="address2" name="address2" autocomplete="address-line2">
+      </label>
+
+      <label>
+        City / Town
+        <input type="text" id="city" name="city" autocomplete="address-level2" required>
+      </label>
+
+      <label>
+        County / Region
+        <input type="text" id="region" name="region" autocomplete="address-level1">
+      </label>
+
+      <label>
+        Postcode
+        <input type="text" id="postcode" name="postcode" autocomplete="postal-code" required>
+      </label>
+
+      <label class="checkbox">
+        <input type="checkbox" id="consent" name="consent" required>
+        I confirm my details are accurate and I agree to the privacy & retention policy.
+      </label>
+
+      <!-- Turnstile -->
+      <div class="turnstile-wrapper">
+        <div class="cf-turnstile"
+             data-sitekey="YOUR_TURNSTILE_SITE_KEY"
+             data-callback="onTurnstileSuccess"></div>
+      </div>
+
+      <button type="submit" id="submit-btn">Submit Entry</button>
+
+      <!-- OTP step -->
+      <div id="otp-step" class="otp" hidden>
+        <p>We’ve sent a one-time passcode to your email.</p>
+        <label>
+          Enter passcode
+          <input type="text" id="otp" name="otp" inputmode="numeric" required>
+        </label>
+
+        <button type="button" id="verify-otp-btn">Verify & Complete</button>
+        <button type="button" id="resend-otp-btn">Resend Code</button>
+      </div>
+
+    </form>
+  </main>
+
+  <script src="entry.js"></script>
+</body>
+</html>
