@@ -10,11 +10,71 @@ window.onTurnstileSuccess = function(token) {
   turnstileToken = token;
 };
 
-// Helper shortcuts
+// ------- helpers -------
 function $(id) { return document.getElementById(id); }
 function show(el, yes = true) { el.hidden = !yes; }
-function msgError(text) { $("error").textContent = text; show($("error")); }
-function msgSuccess(text) { $("success").innerHTML = text; show($("success")); }
+function msgError(text) { $("error").textContent = text; show($("error"), true); }
+function msgSuccess(html) { $("success").innerHTML = html; show($("success"), true); }
+function clearMsgs() { show($("error"), false); show($("success"), false); }
+function iso(dtSec) {
+  try {
+    return new Date(Number(dtSec) * 1000).toLocaleString();
+  } catch { return ""; }
+}
+
+// ------- campaign bootstrapping -------
+(async function initFromQuery() {
+  const params = new URLSearchParams(location.search);
+  const campaignId = params.get("campaign");
+  if (!campaignId) return; // no campaign param; keep defaults
+
+  // Lock the submit until we know the campaign status
+  $("submit-btn").disabled = true;
+
+  try {
+    // Expect your Worker to expose: GET /campaigns/:id  -> { ok, campaign: { id, product_id, product_name, starts_at, ends_at, quantity } }
+    const res = await fetch(`${API_BASE}/campaigns/${encodeURIComponent(campaignId)}`);
+    const out = await res.json();
+
+    if (!res.ok || !out.ok || !out.campaign) {
+      $("campaign-banner").className = "alert alert-error";
+      $("campaign-banner").textContent = "That campaign link is invalid or not available.";
+      show($("campaign-banner"), true);
+      return;
+    }
+
+    const c = out.campaign;
+
+    // Populate hidden inputs so the form POST carries campaign & product info
+    $("campaign_id").value = c.id;
+    $("product_id").value = c.product_id;
+    $("product_name").value = c.product_name;
+
+    // Human-friendly banner
+    const now = Math.floor(Date.now() / 1000);
+    let banner = `Campaign: ${c.product_name} (starts ${iso(c.starts_at)}, ends ${iso(c.ends_at)})`;
+    let okToEnter = true;
+
+    if (now < Number(c.starts_at)) {
+      okToEnter = false;
+      banner += " — not open yet.";
+    } else if (now > Number(c.ends_at)) {
+      okToEnter = false;
+      banner += " — this campaign has ended.";
+    }
+
+    $("campaign-banner").className = okToEnter ? "alert alert-success" : "alert alert-error";
+    $("campaign-banner").textContent = banner;
+    show($("campaign-banner"), true);
+
+    $("submit-btn").disabled = !okToEnter;
+
+  } catch (e) {
+    $("campaign-banner").className = "alert alert-error";
+    $("campaign-banner").textContent = "Unable to load campaign details right now.";
+    show($("campaign-banner"), true);
+  }
+})();
 
 // Collect form data
 function collectForm() {
@@ -26,22 +86,25 @@ function collectForm() {
 
 // Basic validation
 function validate(data) {
-  if (!data.full_name.trim()) return "Full name required";
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email)) return "Valid email required";
-  if (!data.mobile.trim()) return "Mobile number required";
-  if (!data.address1.trim()) return "Address line 1 required";
-  if (!data.city.trim()) return "City required";
-  if (!data.postcode.trim()) return "Postcode required";
+  if (!data.full_name?.trim()) return "Full name required";
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email || "")) return "Valid email required";
+  if (!String(data.mobile || "").trim()) return "Mobile number required";
+  if (!String(data.address1 || "").trim()) return "Address line 1 required";
+  if (!String(data.city || "").trim()) return "City required";
+  if (!String(data.postcode || "").trim()) return "Postcode required";
   if (!data.consent) return "You must confirm consent";
   if (!data.turnstile_token) return "Verification required (Turnstile)";
+  // If we arrived via a campaign link, ensure the hidden campaign_id is present.
+  if (new URLSearchParams(location.search).get("campaign") && !data.campaign_id) {
+    return "This campaign link is invalid.";
+  }
   return null;
 }
 
 // Submit entry
 $("entry-form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
-  $("error").hidden = true;
-  $("success").hidden = true;
+  clearMsgs();
 
   const data = collectForm();
   const v = validate(data);
@@ -72,7 +135,7 @@ $("entry-form").addEventListener("submit", async (ev) => {
     } else {
       msgSuccess(
         `Entry received! <br><br>Track your status:<br>
-         <a href="${out.status_url}" target="_blank">${out.status_url}</a>`
+         <a href="${out.status_url}" target="_blank" rel="noopener">${out.status_url}</a>`
       );
       $("entry-form").reset();
     }
@@ -86,6 +149,7 @@ $("entry-form").addEventListener("submit", async (ev) => {
 
 // Verify OTP
 $("verify-otp-btn").addEventListener("click", async () => {
+  clearMsgs();
   const code = $("otp").value.trim();
   if (!code) return msgError("Enter the code from your email.");
 
@@ -101,7 +165,7 @@ $("verify-otp-btn").addEventListener("click", async () => {
 
     msgSuccess(
       `Entry confirmed! <br><br>Track your status:<br>
-       <a href="${out.status_url}" target="_blank">${out.status_url}</a>`
+       <a href="${out.status_url}" target="_blank" rel="noopener">${out.status_url}</a>`
     );
 
     $("entry-form").reset();
@@ -114,6 +178,7 @@ $("verify-otp-btn").addEventListener("click", async () => {
 
 // Resend OTP
 $("resend-otp-btn").addEventListener("click", async () => {
+  clearMsgs();
   try {
     const res = await fetch(`${API_BASE}/enter/${pendingEntryId}/resend-otp`, {
       method: "POST"

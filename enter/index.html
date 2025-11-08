@@ -19,6 +19,9 @@
       Fill out your details below. You'll receive a one-time passcode to confirm your entry.
     </p>
 
+    <!-- Campaign info / status line -->
+    <div id="campaign-banner" class="alert" hidden></div>
+
     <!-- Alerts -->
     <div id="error" class="alert alert-error" hidden></div>
     <div id="success" class="alert alert-success" hidden></div>
@@ -26,7 +29,8 @@
     <!-- Entry Form -->
     <form id="entry-form" novalidate>
 
-      <!-- Product details -->
+      <!-- Campaign + Product details (auto-filled when ?campaign= is present) -->
+      <input type="hidden" id="campaign_id" name="campaign_id" value="">
       <input type="hidden" id="product_id" name="product_id" value="prod_cowboyhat_2025" />
       <input type="hidden" id="product_name" name="product_name" value="Cowboy Hat 2025 Edition" />
 
