@@ -10,71 +10,63 @@ window.onTurnstileSuccess = function(token) {
   turnstileToken = token;
 };
 
-// ------- helpers -------
+// Helper shortcuts
 function $(id) { return document.getElementById(id); }
 function show(el, yes = true) { el.hidden = !yes; }
-function msgError(text) { $("error").textContent = text; show($("error"), true); }
-function msgSuccess(html) { $("success").innerHTML = html; show($("success"), true); }
-function clearMsgs() { show($("error"), false); show($("success"), false); }
-function iso(dtSec) {
-  try {
-    return new Date(Number(dtSec) * 1000).toLocaleString();
-  } catch { return ""; }
+function msgError(text) { $("error").textContent = text; show($("error")); }
+function msgSuccess(text) { $("success").innerHTML = text; show($("success")); }
+
+function fmtDate(ts) {
+  // ts in seconds -> nice local string
+  try { return new Date(ts * 1000).toLocaleString(); } catch { return String(ts); }
 }
 
-// ------- campaign bootstrapping -------
-(async function initFromQuery() {
+// --- Campaign bootstrap ---
+async function loadCampaign() {
   const params = new URLSearchParams(location.search);
   const campaignId = params.get("campaign");
-  if (!campaignId) return; // no campaign param; keep defaults
 
-  // Lock the submit until we know the campaign status
-  $("submit-btn").disabled = true;
+  if (!campaignId) {
+    msgError("Missing campaign id in the URL.");
+    $("submit-btn").disabled = true;
+    return;
+  }
 
   try {
-    // Expect your Worker to expose: GET /campaigns/:id  -> { ok, campaign: { id, product_id, product_name, starts_at, ends_at, quantity } }
-    const res = await fetch(`${API_BASE}/campaigns/${encodeURIComponent(campaignId)}`);
-    const out = await res.json();
+    const res = await fetch(`${API_BASE}/campaigns/${encodeURIComponent(campaignId)}`, {
+      method: "GET",
+      headers: { "accept": "application/json" }
+    });
 
-    if (!res.ok || !out.ok || !out.campaign) {
-      $("campaign-banner").className = "alert alert-error";
-      $("campaign-banner").textContent = "That campaign link is invalid or not available.";
-      show($("campaign-banner"), true);
+    const out = await res.json();
+    if (!res.ok || !out.ok) {
+      msgError("That campaign link is invalid or not available.");
+      $("submit-btn").disabled = true;
       return;
     }
 
-    const c = out.campaign;
-
-    // Populate hidden inputs so the form POST carries campaign & product info
-    $("campaign_id").value = c.id;
-    $("product_id").value = c.product_id;
+    const c = out.campaign; // {id, product_id, product_name, starts_at, ends_at, is_open}
+    // Fill hidden inputs
+    $("campaign_id").value  = c.id;
+    $("product_id").value   = c.product_id;
     $("product_name").value = c.product_name;
 
-    // Human-friendly banner
-    const now = Math.floor(Date.now() / 1000);
-    let banner = `Campaign: ${c.product_name} (starts ${iso(c.starts_at)}, ends ${iso(c.ends_at)})`;
-    let okToEnter = true;
+    // Update UI
+    $("page-title").textContent = `Enter: ${c.product_name}`;
+    $("campaign-subtext").innerHTML =
+      `Entries window: <strong>${fmtDate(c.starts_at)}</strong> → <strong>${fmtDate(c.ends_at)}</strong>`;
 
-    if (now < Number(c.starts_at)) {
-      okToEnter = false;
-      banner += " — not open yet.";
-    } else if (now > Number(c.ends_at)) {
-      okToEnter = false;
-      banner += " — this campaign has ended.";
+    if (c.is_open !== true) {
+      $("submit-btn").disabled = true;
+      msgError("This campaign is not currently accepting entries.");
+    } else {
+      $("submit-btn").disabled = false;
     }
-
-    $("campaign-banner").className = okToEnter ? "alert alert-success" : "alert alert-error";
-    $("campaign-banner").textContent = banner;
-    show($("campaign-banner"), true);
-
-    $("submit-btn").disabled = !okToEnter;
-
   } catch (e) {
-    $("campaign-banner").className = "alert alert-error";
-    $("campaign-banner").textContent = "Unable to load campaign details right now.";
-    show($("campaign-banner"), true);
+    msgError("Failed to load campaign details.");
+    $("submit-btn").disabled = true;
   }
-})();
+}
 
 // Collect form data
 function collectForm() {
@@ -86,25 +78,25 @@ function collectForm() {
 
 // Basic validation
 function validate(data) {
+  if (!data.campaign_id) return "Missing campaign id";
+  if (!data.product_id) return "Missing product id";
+  if (!data.product_name) return "Missing product name";
   if (!data.full_name?.trim()) return "Full name required";
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email || "")) return "Valid email required";
-  if (!String(data.mobile || "").trim()) return "Mobile number required";
-  if (!String(data.address1 || "").trim()) return "Address line 1 required";
-  if (!String(data.city || "").trim()) return "City required";
-  if (!String(data.postcode || "").trim()) return "Postcode required";
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email)) return "Valid email required";
+  if (!data.mobile?.trim()) return "Mobile number required";
+  if (!data.address1?.trim()) return "Address line 1 required";
+  if (!data.city?.trim()) return "City required";
+  if (!data.postcode?.trim()) return "Postcode required";
   if (!data.consent) return "You must confirm consent";
   if (!data.turnstile_token) return "Verification required (Turnstile)";
-  // If we arrived via a campaign link, ensure the hidden campaign_id is present.
-  if (new URLSearchParams(location.search).get("campaign") && !data.campaign_id) {
-    return "This campaign link is invalid.";
-  }
   return null;
 }
 
 // Submit entry
 $("entry-form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
-  clearMsgs();
+  $("error").hidden = true;
+  $("success").hidden = true;
 
   const data = collectForm();
   const v = validate(data);
@@ -122,7 +114,18 @@ $("entry-form").addEventListener("submit", async (ev) => {
 
     const out = await res.json();
     if (!res.ok) {
-      msgError(out.error || "Something went wrong.");
+      // common server rejections
+      if (out.error === "already_entered") {
+        msgError("You’ve already entered this campaign with this email or mobile.");
+      } else if (out.error === "campaign_not_started") {
+        msgError("This campaign hasn’t started yet.");
+      } else if (out.error === "campaign_ended") {
+        msgError("This campaign has ended.");
+      } else if (out.error === "turnstile_failed") {
+        msgError("Verification failed. Please retry the Turnstile challenge.");
+      } else {
+        msgError(out.error || "Something went wrong.");
+      }
       $("submit-btn").disabled = false;
       return;
     }
@@ -149,7 +152,6 @@ $("entry-form").addEventListener("submit", async (ev) => {
 
 // Verify OTP
 $("verify-otp-btn").addEventListener("click", async () => {
-  clearMsgs();
   const code = $("otp").value.trim();
   if (!code) return msgError("Enter the code from your email.");
 
@@ -178,7 +180,6 @@ $("verify-otp-btn").addEventListener("click", async () => {
 
 // Resend OTP
 $("resend-otp-btn").addEventListener("click", async () => {
-  clearMsgs();
   try {
     const res = await fetch(`${API_BASE}/enter/${pendingEntryId}/resend-otp`, {
       method: "POST"
@@ -191,3 +192,6 @@ $("resend-otp-btn").addEventListener("click", async () => {
     msgError("Network error — try again.");
   }
 });
+
+// init
+loadCampaign();

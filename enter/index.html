@@ -14,13 +14,10 @@
 <body>
   <main class="container">
 
-    <h1>Enter for a Chance to Purchase</h1>
-    <p class="subtext">
-      Fill out your details below. You'll receive a one-time passcode to confirm your entry.
+    <h1 id="page-title">Enter for a Chance to Purchase</h1>
+    <p class="subtext" id="campaign-subtext">
+      Loading campaign details…
     </p>
-
-    <!-- Campaign info / status line -->
-    <div id="campaign-banner" class="alert" hidden></div>
 
     <!-- Alerts -->
     <div id="error" class="alert alert-error" hidden></div>
@@ -29,10 +26,10 @@
     <!-- Entry Form -->
     <form id="entry-form" novalidate>
 
-      <!-- Campaign + Product details (auto-filled when ?campaign= is present) -->
-      <input type="hidden" id="campaign_id" name="campaign_id" value="">
-      <input type="hidden" id="product_id" name="product_id" value="prod_cowboyhat_2025" />
-      <input type="hidden" id="product_name" name="product_name" value="Cowboy Hat 2025 Edition" />
+      <!-- Campaign & Product (filled by JS) -->
+      <input type="hidden" id="campaign_id"   name="campaign_id" />
+      <input type="hidden" id="product_id"    name="product_id" />
+      <input type="hidden" id="product_name"  name="product_name" />
 
       <label>
         Full name
@@ -86,7 +83,7 @@
              data-callback="onTurnstileSuccess"></div>
       </div>
 
-      <button type="submit" id="submit-btn">Submit Entry</button>
+      <button type="submit" id="submit-btn" disabled>Submit Entry</button>
 
       <!-- OTP step -->
       <div id="otp-step" class="otp" hidden>
