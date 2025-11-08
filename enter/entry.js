@@ -51,7 +51,7 @@ $("entry-form").addEventListener("submit", async (ev) => {
   lastEmail = data.email;
 
   try {
-    const res = await fetch(`${API_BASE}/entries/start`, {
+    const res = await fetch(`${API_BASE}/enter/start`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(data)
@@ -90,7 +90,7 @@ $("verify-otp-btn").addEventListener("click", async () => {
   if (!code) return msgError("Enter the code from your email.");
 
   try {
-    const res = await fetch(`${API_BASE}/entries/${pendingEntryId}/verify`, {
+    const res = await fetch(`${API_BASE}/enter/${pendingEntryId}/verify`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ otp: code })
@@ -115,7 +115,7 @@ $("verify-otp-btn").addEventListener("click", async () => {
 // Resend OTP
 $("resend-otp-btn").addEventListener("click", async () => {
   try {
-    const res = await fetch(`${API_BASE}/entries/${pendingEntryId}/resend-otp`, {
+    const res = await fetch(`${API_BASE}/enter/${pendingEntryId}/resend-otp`, {
       method: "POST"
     });
 
