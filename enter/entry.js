@@ -1,21 +1,22 @@
 // ===== CONFIG =====
-const API_BASE = "https://cowboyhat.ohmyglob.lol/api";
-let turnstileToken = ""0x4AAAAAAB_0Zo98m-rj3y0o;
+const API_BASE = "https://api-cowboyhat.ohmyglob.lol";
+
+let turnstileToken = "";
 let pendingEntryId = "";
 let lastEmail = "";
 
-// Turnstile callback
+// Cloudflare Turnstile callback
 window.onTurnstileSuccess = function(token) {
   turnstileToken = token;
 };
 
-// Helpers
+// Helper shortcuts
 function $(id) { return document.getElementById(id); }
 function show(el, yes = true) { el.hidden = !yes; }
 function msgError(text) { $("error").textContent = text; show($("error")); }
 function msgSuccess(text) { $("success").innerHTML = text; show($("success")); }
 
-// Gather form data
+// Collect form data
 function collectForm() {
   const fd = new FormData($("entry-form"));
   const data = Object.fromEntries(fd.entries());
@@ -32,7 +33,7 @@ function validate(data) {
   if (!data.city.trim()) return "City required";
   if (!data.postcode.trim()) return "Postcode required";
   if (!data.consent) return "You must confirm consent";
-  if (!data.turnstile_token) return "Verification required";
+  if (!data.turnstile_token) return "Verification required (Turnstile)";
   return null;
 }
 
@@ -66,11 +67,11 @@ $("entry-form").addEventListener("submit", async (ev) => {
     pendingEntryId = out.entry_id;
 
     if (out.otp_required) {
-      msgSuccess(`A one-time passcode has been sent to ${data.email}`);
+      msgSuccess(`A one-time passcode has been sent to ${data.email}.`);
       show($("otp-step"), true);
     } else {
       msgSuccess(
-        `Entry received! <br><br>Track your status here:<br>
+        `Entry received! <br><br>Track your status:<br>
          <a href="${out.status_url}" target="_blank">${out.status_url}</a>`
       );
       $("entry-form").reset();
@@ -117,8 +118,8 @@ $("resend-otp-btn").addEventListener("click", async () => {
     const res = await fetch(`${API_BASE}/entries/${pendingEntryId}/resend-otp`, {
       method: "POST"
     });
-    if (!res.ok) return msgError("Could not resend code.");
 
+    if (!res.ok) return msgError("Could not resend code.");
     msgSuccess(`A new code has been sent to ${lastEmail}.`);
 
   } catch {

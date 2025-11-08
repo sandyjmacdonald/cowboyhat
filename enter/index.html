@@ -9,14 +9,14 @@
 
   <!-- Cloudflare Turnstile -->
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-
 </head>
+
 <body>
   <main class="container">
 
     <h1>Enter for a Chance to Purchase</h1>
     <p class="subtext">
-      Fill out your details below. You’ll receive a one-time passcode to confirm your entry.
+      Fill out your details below. You'll receive a one-time passcode to confirm your entry.
     </p>
 
     <!-- Alerts -->
@@ -26,7 +26,7 @@
     <!-- Entry Form -->
     <form id="entry-form" novalidate>
 
-      <!-- Product context (customise these for each entry page) -->
+      <!-- Product details -->
       <input type="hidden" id="product_id" name="product_id" value="prod_cowboyhat_2025" />
       <input type="hidden" id="product_name" name="product_name" value="Cowboy Hat 2025 Edition" />
 
@@ -78,7 +78,7 @@
       <!-- Turnstile -->
       <div class="turnstile-wrapper">
         <div class="cf-turnstile"
-             data-sitekey="YOUR_TURNSTILE_SITE_KEY"
+             data-sitekey="0x4AAAAAAB_0Zo98m-rj3y0o"
              data-callback="onTurnstileSuccess"></div>
       </div>
 
@@ -86,7 +86,8 @@
 
       <!-- OTP step -->
       <div id="otp-step" class="otp" hidden>
-        <p>We’ve sent a one-time passcode to your email.</p>
+        <p>A one-time passcode has been sent to your email.</p>
+
         <label>
           Enter passcode
           <input type="text" id="otp" name="otp" inputmode="numeric" required>
